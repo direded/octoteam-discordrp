@@ -140,15 +140,19 @@ int WINAPI WinMain(HINSTANCE hThisInstance,
 	//ShowWindow(Hwnd, nCmdShow);
 	Shell_NotifyIcon(NIM_ADD, &notifyIconData); // add
 	discordInit();
-
+	updatePresence();
+	lastUpdate = steady_clock::now();
 	/* Run the message loop. It will run until GetMessage() returns 0 */
 	while (GetMessage(&messages, NULL, 0, 0))
 	{
 		/* Translate virtual-key messages into character messages */
 		TranslateMessage(&messages);
 		steady_clock::time_point curUpdate = steady_clock::now();
-		if (duration_cast<duration<double>>(curUpdate - lastUpdate).count() > 10) {
+		if (duration_cast<std::chrono::seconds>(curUpdate - lastUpdate).count() > 10) {
+			//MessageBoxW(NULL, (wchar_t *)"Update!", (LPCWSTR)"Message", MB_OK | MB_ICONINFORMATION);
 			lastUpdate = curUpdate;
+			Discord_Shutdown();
+			discordInit();
 			updatePresence();
 		}
 		/* Send message to WindowProcedure */
