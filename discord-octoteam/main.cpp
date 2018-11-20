@@ -1,6 +1,7 @@
 #include <iostream>
 #include <stdlib.h>
 #include <Windows.h>
+#include <chrono>
 
 #include "resource.h"
 
@@ -14,6 +15,7 @@
 #include "discord_rpc.h"
 
 using namespace std;
+using namespace std::chrono;
 
 // handle discord ready event
 void handleDiscordReady(const DiscordUser *u) {
@@ -36,7 +38,7 @@ void updatePresence() {
 	DiscordRichPresence discordPresence;
 	memset(&discordPresence, 0, sizeof(discordPresence));
 	discordPresence.state = "www.octothorp.team";
-	discordPresence.details = "Мы делаем игры лучше";
+	discordPresence.details = "Мы делаем игры лучше!";
 	discordPresence.largeImageKey = "logo_white";
 	// discordPresence.largeImageText = "STOP PLEASE GOD STOP";
 	Discord_UpdatePresence(&discordPresence);
@@ -65,6 +67,8 @@ void minimize();
 void restore();
 void InitNotifyIconData();
 HANDLE hMutex;
+
+steady_clock::time_point lastUpdate;
 
 int WINAPI WinMain(HINSTANCE hThisInstance,
 	HINSTANCE hPrevInstance,
@@ -136,13 +140,17 @@ int WINAPI WinMain(HINSTANCE hThisInstance,
 	//ShowWindow(Hwnd, nCmdShow);
 	Shell_NotifyIcon(NIM_ADD, &notifyIconData); // add
 	discordInit();
-	updatePresence();
 
 	/* Run the message loop. It will run until GetMessage() returns 0 */
 	while (GetMessage(&messages, NULL, 0, 0))
 	{
 		/* Translate virtual-key messages into character messages */
 		TranslateMessage(&messages);
+		steady_clock::time_point curUpdate = steady_clock::now();
+		if (duration_cast<duration<double>>(curUpdate - lastUpdate).count() > 10) {
+			lastUpdate = curUpdate;
+			updatePresence();
+		}
 		/* Send message to WindowProcedure */
 		DispatchMessage(&messages);
 	}
