@@ -32,21 +32,51 @@ void handleDiscordError(int errcode, const char *message) {
 	printf("\nDiscord: error (%d: %s)\n", errcode, message);
 }
 
+
+LPCSTR iniPath = ".\\config.ini";
+
+const TCHAR szTIP[64] = TEXT("Octothorp Team");
+const char szClassName[] = "Octothorp Team Rich Presence";
+char state[128] = "www.octothorp.team";
+char details[128] = "Мы делаем игры лучше!";
+char largeImageKey[32] = "logo_white";
+char largeImageText[128] = "STOP PLEASE GOD STOP";
+char smallImageKey[32] = "logo_white";
+char smallImageText[128] = "STOP PLEASE GOD STOP";
+// "logo_white"
+// "logo_dark"
+// "logo_octopride"
+
 // update discord rich presence
 void updatePresence() {
 	// set required variables
 	DiscordRichPresence discordPresence;
 	memset(&discordPresence, 0, sizeof(discordPresence));
-	discordPresence.state = "www.octothorp.team";
-	discordPresence.details = "Мы делаем игры лучше!";
-	discordPresence.largeImageKey = "logo_white";
-	// discordPresence.largeImageText = "STOP PLEASE GOD STOP";
+	discordPresence.state = state;
+	discordPresence.details = details;
+	discordPresence.largeImageKey = largeImageKey;
+	discordPresence.largeImageText = largeImageText;
+	discordPresence.smallImageKey = smallImageKey;
+	discordPresence.smallImageText = smallImageText;
 	Discord_UpdatePresence(&discordPresence);
 }
 
-
 static void discordInit() {
 	DiscordEventHandlers handlers;
+	GetPrivateProfileString("values", "first_row", "Мы делаем игры лучше!", details, 128, iniPath);
+	GetPrivateProfileString("values", "second_row", "www.octothorp.team", state, 128, iniPath);
+	GetPrivateProfileString("values", "small_id", "logo_white", smallImageKey, 32, iniPath);
+	GetPrivateProfileString("values", "small_text", "Octothorp team", smallImageText, 128, iniPath);
+	GetPrivateProfileString("values", "large_key", "Octothorp team", largeImageKey, 32, iniPath);
+	GetPrivateProfileString("values", "large_text", "Присоединяйся к нам!", largeImageText, 128, iniPath);
+
+	GetPrivateProfileInt("enable", "first_row", 1, iniPath);
+	GetPrivateProfileInt("enable", "second_row", 1, iniPath);
+	GetPrivateProfileInt("enable", "small_id", 0, iniPath);
+	GetPrivateProfileInt("enable", "small_text", 0, iniPath);
+	GetPrivateProfileInt("enable", "large_key", 1, iniPath);
+	GetPrivateProfileInt("enable", "large_text", 1, iniPath);
+	
 	memset(&handlers, 0, sizeof(handlers));
 	handlers.ready = handleDiscordReady;
 	handlers.disconnected = handleDiscordDisconnected;
@@ -58,8 +88,6 @@ UINT WM_TASKBAR = 0;
 HWND Hwnd;
 HMENU Hmenu;
 NOTIFYICONDATA notifyIconData;
-TCHAR szTIP[64] = TEXT("Octothorp Team");
-char szClassName[] = "Octothorp Team Rich Presence";
 
 /*procedures  */
 LRESULT CALLBACK WindowProcedure(HWND, UINT, WPARAM, LPARAM);
