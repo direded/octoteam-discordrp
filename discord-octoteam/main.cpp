@@ -2,11 +2,14 @@
 #include <stdlib.h>
 #include <Windows.h>
 #include <chrono>
+#include <fstream>
+#include <sstream>
 
 #include "resource.h"
 
 #define ID_TRAY_APP_ICON    1001
 #define ID_TRAY_EXIT        1002
+#define ID_TRAY_UPDATE		1003
 #define WM_SYSICON          (WM_USER + 1)
 
 #pragma comment(lib, "discord-rpc.lib")
@@ -32,56 +35,152 @@ void handleDiscordError(int errcode, const char *message) {
 	printf("\nDiscord: error (%d: %s)\n", errcode, message);
 }
 
-
-LPCSTR iniPath = ".\\config.ini";
+TCHAR sAbsolutePathBuffer[2048];
+char iniPath[2048] = ".\\config.ini";
 
 const TCHAR szTIP[64] = TEXT("Octothorp Team");
 const char szClassName[] = "Octothorp Team Rich Presence";
-char state[128] = "www.octothorp.team";
-char details[128] = "Мы делаем игры лучше!";
-char largeImageKey[32] = "logo_white";
-char largeImageText[128] = "STOP PLEASE GOD STOP";
-char smallImageKey[32] = "logo_white";
-char smallImageText[128] = "STOP PLEASE GOD STOP";
+char state[128];
+char details[128];
+char largeImageKey[32];
+char largeImageText[128];
+char smallImageKey[32];
+char smallImageText[128];
+
+int enable_state = 1;
+int enable_details = 1;
+int enable_largeImageKey = 1;
+int enable_largeImageText = 1;
+int enable_smallImageKey = 1;
+int enable_smallImageText = 1;
 // "logo_white"
 // "logo_dark"
 // "logo_octopride"
 
 // update discord rich presence
+
 void updatePresence() {
 	// set required variables
 	DiscordRichPresence discordPresence;
 	memset(&discordPresence, 0, sizeof(discordPresence));
-	discordPresence.state = state;
-	discordPresence.details = details;
-	discordPresence.largeImageKey = largeImageKey;
-	discordPresence.largeImageText = largeImageText;
-	discordPresence.smallImageKey = smallImageKey;
-	discordPresence.smallImageText = smallImageText;
+	if (enable_state)
+		discordPresence.state = state;
+	if (enable_details)
+		discordPresence.details = details;
+	if (enable_largeImageKey)
+		discordPresence.largeImageKey = largeImageKey;
+	if (enable_largeImageText)
+		discordPresence.largeImageText = largeImageText;
+	if (enable_smallImageKey)
+		discordPresence.smallImageKey = smallImageKey;
+	if (enable_smallImageText)
+		discordPresence.smallImageText = smallImageText;
 	Discord_UpdatePresence(&discordPresence);
 }
 
-static void discordInit() {
-	DiscordEventHandlers handlers;
-	GetPrivateProfileString("values", "first_row", "Мы делаем игры лучше!", details, 128, iniPath);
-	GetPrivateProfileString("values", "second_row", "www.octothorp.team", state, 128, iniPath);
-	GetPrivateProfileString("values", "small_id", "logo_white", smallImageKey, 32, iniPath);
-	GetPrivateProfileString("values", "small_text", "Octothorp team", smallImageText, 128, iniPath);
-	GetPrivateProfileString("values", "large_key", "Octothorp team", largeImageKey, 32, iniPath);
-	GetPrivateProfileString("values", "large_text", "Присоединяйся к нам!", largeImageText, 128, iniPath);
+bool storeConfigString(string key, string value) {
+	if (key == "first_row") {
+		strcpy_s(details, value.c_str());
+	}
+	else if (key == "second_row") {
+		strcpy_s(state, value.c_str());
+	}
+	else if (key == "small_id") {
+		strcpy_s(smallImageKey, value.c_str());
+	}
+	else if (key == "small_text") {
+		strcpy_s(smallImageText, value.c_str());
+	}
+	else if (key == "large_key") {
+		strcpy_s(largeImageKey, value.c_str());
+	}
+	else if (key == "large_text") {
+		strcpy_s(largeImageText, value.c_str());
+	}
+	else {
+		return false;
+	}
+	return true;
+}
 
-	GetPrivateProfileInt("enable", "first_row", 1, iniPath);
-	GetPrivateProfileInt("enable", "second_row", 1, iniPath);
-	GetPrivateProfileInt("enable", "small_id", 0, iniPath);
-	GetPrivateProfileInt("enable", "small_text", 0, iniPath);
-	GetPrivateProfileInt("enable", "large_key", 1, iniPath);
-	GetPrivateProfileInt("enable", "large_text", 1, iniPath);
+bool storeConfigInt(string key, int value) {
+	if (key == "enable_first_row") {
+		enable_details = value;
+	}
+	else if (key == "enable_second_row") {
+		enable_state = value;
+	}
+	else if (key == "enable_small_id") {
+		enable_smallImageKey = value;
+	}
+	else if (key == "enable_small_text") {
+		enable_smallImageText = value;
+	}
+	else if (key == "enable_large_key") {
+		enable_largeImageKey = value;
+	}
+	else if (key == "enable_large_text") {
+		enable_largeImageText = value;
+	}
+	else {
+		return false;
+	}
+	return true;
+}
+
+void updateConfig() {
+
+	std::ifstream ifile(iniPath);
+	if (ifile) {
+		std::string line;
+		while (std::getline(ifile, line))
+		{
+			cout << line << endl;
+			std::istringstream is_line(line);
+			std::string key;
+			if (std::getline(is_line, key, '='))
+			{
+				
+				std::string value;
+				cout << key << " " << value << endl;
+				if (std::getline(is_line, value))
+					if (!storeConfigString(key, value)) {
+						storeConfigInt(key, stoi(value));
+					}
+			}
+		}
+	}
+	/*
+	int res = GetPrivateProfileString("values", "first_row", "Мы делаем игры лучше!", details, 128, iniPath);
+	res = GetPrivateProfileString("values", "second_row", "www.octothorp.team", state, 128, iniPath);
+	res = GetPrivateProfileString("values", "small_id", "logo_white", smallImageKey, 32, iniPath);
+	res = GetPrivateProfileString("values", "small_text", "Octothorp team", smallImageText, 128, iniPath);
+	res = GetPrivateProfileString("values", "large_key", "logo_white", largeImageKey, 32, iniPath);
+	res = GetPrivateProfileString("values", "large_text", "Присоединяйся к нам!", largeImageText, 128, iniPath);
+
+	enable_details = GetPrivateProfileInt("enable", "first_row", 1, iniPath);
+	enable_state = GetPrivateProfileInt("enable", "second_row", 1, iniPath);
+	enable_smallImageKey = GetPrivateProfileInt("enable", "small_id", 0, iniPath);
+	enable_smallImageText = GetPrivateProfileInt("enable", "small_text", 0, iniPath);
+	enable_largeImageKey = GetPrivateProfileInt("enable", "large_key", 1, iniPath);
+	enable_largeImageText = GetPrivateProfileInt("enable", "large_text", 1, iniPath);
+	*/
+}
+
+void discordInit() {
+	DiscordEventHandlers handlers;
 	
 	memset(&handlers, 0, sizeof(handlers));
 	handlers.ready = handleDiscordReady;
 	handlers.disconnected = handleDiscordDisconnected;
 	handlers.errored = handleDiscordError;
 	Discord_Initialize("514095622358433845", &handlers, 1, NULL);
+}
+
+void discordRestart() {
+	Discord_Shutdown();
+	discordInit();
+	updatePresence();
 }
 
 UINT WM_TASKBAR = 0;
@@ -99,10 +198,12 @@ HANDLE hMutex;
 steady_clock::time_point lastUpdate;
 
 int WINAPI WinMain(HINSTANCE hThisInstance,
+
 	HINSTANCE hPrevInstance,
 	LPSTR lpszArgument,
 	int nCmdShow)
 {
+
 	try {
 		// Try to open the mutex.
 		hMutex = OpenMutex(MUTEX_ALL_ACCESS, 0, "octothorp.team");
@@ -162,8 +263,12 @@ int WINAPI WinMain(HINSTANCE hThisInstance,
 		hThisInstance,       /* Program Instance handler */
 		NULL                 /* No Window Creation data */
 	);
+	GetFullPathName(iniPath, sizeof(sAbsolutePathBuffer) / sizeof(TCHAR), sAbsolutePathBuffer, NULL);
+	strcpy_s(iniPath, sAbsolutePathBuffer);
+
 	/*Initialize the NOTIFYICONDATA structure only once*/
 	InitNotifyIconData();
+	updateConfig();
 	/* Make the window visible on the screen */
 	//ShowWindow(Hwnd, nCmdShow);
 	Shell_NotifyIcon(NIM_ADD, &notifyIconData); // add
@@ -179,9 +284,7 @@ int WINAPI WinMain(HINSTANCE hThisInstance,
 		if (duration_cast<std::chrono::seconds>(curUpdate - lastUpdate).count() > 10) {
 			//MessageBoxW(NULL, (wchar_t *)"Update!", (LPCWSTR)"Message", MB_OK | MB_ICONINFORMATION);
 			lastUpdate = curUpdate;
-			Discord_Shutdown();
-			discordInit();
-			updatePresence();
+			discordRestart();
 		}
 		/* Send message to WindowProcedure */
 		DispatchMessage(&messages);
@@ -210,6 +313,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
 		//ShowWindow(Hwnd, SW_HIDE);
 		Hmenu = CreatePopupMenu();
+		AppendMenu(Hmenu, MF_STRING, ID_TRAY_UPDATE, TEXT("Update"));
 		AppendMenu(Hmenu, MF_STRING, ID_TRAY_EXIT, TEXT("Exit"));
 
 		break;
@@ -261,12 +365,17 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
 
 			SendMessage(hwnd, WM_NULL, 0, 0); // send benign message to window to make sure the menu goes away.
-			if (clicked == ID_TRAY_EXIT)
-			{
-				// quit the application.
-				Shell_NotifyIcon(NIM_DELETE, &notifyIconData);
-				ReleaseMutex(hMutex);
-				PostQuitMessage(0);
+			switch (clicked) {
+				case ID_TRAY_EXIT:
+					// quit the application.
+					Shell_NotifyIcon(NIM_DELETE, &notifyIconData);
+					ReleaseMutex(hMutex);
+					PostQuitMessage(0);
+					break;
+				case ID_TRAY_UPDATE:
+					updateConfig();
+					discordRestart();
+					break;
 			}
 		}
 	}
